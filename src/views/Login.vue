@@ -12,7 +12,7 @@
             <!-- 右侧表单区域 -->
             <div class="login-right">
                 <component :is="currentComponent" @switch-component="switchComponent" />
-                <div class="browser-tips">
+                <div class="browser-tips" v-if="currentComponent !== ForgotPasswordForm">
                     <el-divider content-position="center">{{ browserTips }}</el-divider>
                     <div class="browser-icons">
                         <a href="https://www.microsoft.com/zh-cn/edge" target="_blank">
