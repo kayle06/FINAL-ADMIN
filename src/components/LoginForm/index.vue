@@ -47,6 +47,7 @@
 <script lang="ts" setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { login } from '@/api/user/auth'
 
 const router = useRouter()
 const loading = ref(false)

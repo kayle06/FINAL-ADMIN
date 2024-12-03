@@ -23,7 +23,63 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('@/views/dashboard/index.vue'),
                 meta: {
                     title: '首页',
-                    icon: 'HomeFilled',
+                    icon: 'HomeFilled'
+                }
+            }
+        ]
+    },
+    {
+        path: '/video',
+        component: Layout,
+        redirect: '/video/list',
+        meta: {
+            title: '视频管理',
+            icon: 'VideoCamera'
+        },
+        children: [
+            {
+                path: 'list',
+                name: 'VideoList',
+                component: () => import('@/views/video/list/index.vue'),
+                meta: {
+                    title: '视频列表',
+                    icon: 'List'
+                }
+            },
+            {
+                path: 'tag',
+                name: 'TagList',
+                component: () => import('@/views/video/tag/index.vue'),
+                meta: {
+                    title: '标签管理',
+                    icon: 'Collection'
+                }
+            },
+            {
+                path: 'actress',
+                name: 'ActressList',
+                component: () => import('@/views/video/actress/index.vue'),
+                meta: {
+                    title: '女优管理',
+                    icon: 'User'
+                }
+            },
+            {
+                path: 'category',
+                name: 'CategoryList',
+                component: () => import('@/views/video/category/index.vue'),
+                meta: {
+                    title: '分类管理',
+                    icon: 'Files'
+                }
+            },
+            {
+                path: 'series',
+                name: 'SeriesList',
+                component: () => import('@/views/video/series/index.vue'),
+                meta: {
+                    title: '系列管理',
+                    icon: 'Film'
                 }
             }
         ]
