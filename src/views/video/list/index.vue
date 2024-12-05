@@ -39,6 +39,9 @@
                         <el-button type="primary" @click="handleAdd">
                             <el-icon><Plus /></el-icon>新增视频
                         </el-button>
+                        <el-button type="success" @click="handleBatchAdd">
+                            <el-icon><Plus /></el-icon>批量新增
+                        </el-button>
                     </div>
                 </div>
             </template>
@@ -124,12 +127,6 @@
                     </template>
                 </el-table-column>
                 <el-table-column 
-                    prop="releaseDate" 
-                    label="发行日期" 
-                    width="120"
-                    align="center"
-                />
-                <el-table-column 
                     label="观看状态" 
                     width="100"
                     align="center"
@@ -142,28 +139,11 @@
                 </el-table-column>
                 <el-table-column 
                     label="评分" 
-                    width="120"
+                    width="80"
                     align="center"
                 >
                     <template #default="{ row }">
-                        <el-rate
-                            v-model="row.rating"
-                            :max="10"
-                            disabled
-                            show-score
-                            text-color="#ff9900"
-                            score-template="{value}"
-                        />
-                    </template>
-                </el-table-column>
-                <el-table-column 
-                    prop="duration" 
-                    label="时长" 
-                    width="100"
-                    align="center"
-                >
-                    <template #default="{ row }">
-                        {{ row.duration ? `${row.duration}分钟` : '-' }}
+                        <span class="rating-value">{{ row.rating || '-' }}</span>
                     </template>
                 </el-table-column>
                 <el-table-column 
@@ -272,6 +252,7 @@
                         <el-select
                             v-model="videoForm.tagIds"
                             multiple
+                            filterable
                             collapse-tags
                             collapse-tags-tooltip
                             placeholder="请选择标签"
@@ -288,6 +269,7 @@
                         <el-select
                             v-model="videoForm.actressIds"
                             multiple
+                            filterable
                             collapse-tags
                             collapse-tags-tooltip
                             placeholder="请选择女优"
@@ -312,8 +294,8 @@
                     </el-form-item>
                     <el-form-item label="观看状态" prop="watchStatus">
                         <el-radio-group v-model="videoForm.watchStatus">
-                            <el-radio :label="0">未看</el-radio>
                             <el-radio :label="1">已看</el-radio>
+                            <el-radio :label="0">未看</el-radio>
                         </el-radio-group>
                     </el-form-item>
                     <el-form-item label="评分" prop="rating">
@@ -440,6 +422,32 @@
                 </div>
             </el-scrollbar>
         </el-dialog>
+
+        <!-- 批量新增对话框 -->
+        <el-dialog
+            v-model="batchDialogVisible"
+            title="批量新增视频"
+            width="500px"
+        >
+            <el-form>
+                <el-form-item label="番号列表">
+                    <el-input
+                        v-model="batchCodes"
+                        type="textarea"
+                        :rows="10"
+                        placeholder="请输入番号列表，每行一个番号"
+                    />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button @click="batchDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="handleBatchSubmit" :loading="batchLoading">
+                        确定
+                    </el-button>
+                </span>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -491,7 +499,7 @@ const videoForm = reactive<Video>({
     categoryId: undefined,
     seriesId: undefined,
     actressIds: [],
-    watchStatus: 0,
+    watchStatus: 1,
     rating: 0,
     tagIds: [],
     remark: ''
@@ -518,6 +526,65 @@ const formRules: FormRules = {
 const detailVisible = ref(false)
 const detailData = ref<Video>({} as Video)
 
+// 批量新增相关
+const batchDialogVisible = ref(false)
+const batchCodes = ref('')
+const batchLoading = ref(false)
+
+// 打开批量新增对话框
+const handleBatchAdd = () => {
+    batchDialogVisible.value = true
+    batchCodes.value = ''
+}
+
+// 处理批量提交
+const handleBatchSubmit = async () => {
+    if (!batchCodes.value.trim()) {
+        ElMessage.warning('请输入番号列表')
+        return
+    }
+
+    try {
+        batchLoading.value = true
+        // 将输入的文本分割成番号数组
+        const codes = batchCodes.value
+            .split('\n')
+            .map(code => code.trim())
+            .filter(code => code) // 过滤空行
+
+        // 批量获取视频信息
+        const promises = codes.map(async (code) => {
+            try {
+                const res = await fetchVideoInfo(code)
+                // 设置为未观看状态
+                return {
+                    ...res.data,
+                    watchStatus: 0
+                }
+            } catch (error) {
+                console.error(`获取视频 ${code} 信息失败:`, error)
+                return null
+            }
+        })
+
+        const results = await Promise.all(promises)
+        const successVideos = results.filter(video => video !== null)
+
+        // 批量创建视频
+        const createPromises = successVideos.map(video => createVideo(video))
+        await Promise.all(createPromises)
+
+        ElMessage.success(`成功添加 ${successVideos.length} 个视频`)
+        batchDialogVisible.value = false
+        getList() // 刷新列表
+    } catch (error) {
+        console.error('批量添加失败:', error)
+        ElMessage.error('批量添加失败')
+    } finally {
+        batchLoading.value = false
+    }
+}
+
 // 获取分类列表
 const getCategories = async () => {
     try {
@@ -532,7 +599,7 @@ const getCategories = async () => {
 const getTags = async () => {
     try {
         const res = await listAllTags()
-        tagOptions.value = res.data
+        tagOptions.value = res.data.filter((tag: { parentId: number | null }) => tag.parentId !== null)
     } catch (error) {
         console.error('获取标签列表失败:', error)
     }
@@ -693,7 +760,7 @@ const initForm = () => {
         categoryId: undefined,
         seriesId: undefined,
         actressIds: [],
-        watchStatus: 0,
+        watchStatus: 1,
         rating: 0,
         tagIds: [],
         remark: ''
@@ -873,6 +940,11 @@ onMounted(() => {
                 }
             }
         }
+    }
+
+    .rating-value {
+        font-weight: 500;
+        color: #ff9900;
     }
 }
 

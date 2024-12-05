@@ -188,7 +188,7 @@ const formRules: FormRules = {
         { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
     avatarUrl: [
-        { required: true, message: '请输入头像链接', trigger: 'blur' },
+        // { required: true, message: '请输入头像链接', trigger: 'blur' },
         { type: 'url', message: '请输入有效的URL地址', trigger: 'blur' }
     ]
 }
